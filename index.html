@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Análisis Dimensional Conformado</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #10b981;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: #090d16;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      background: #111827;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: -0.3px;
+    }
+
+    .brand svg {
+      width: 24px;
+      height: 24px;
+      fill: none;
+      stroke: #38bdf8;
+      stroke-width: 2;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    button:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    button.btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+
+    button.btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    button.btn-accent {
+      background: #059669;
+      border-color: #059669;
+      color: #ffffff;
+    }
+
+    button.btn-accent:hover {
+      background: #047857;
+    }
+
+    /* Main Workspace Layout */
+    .workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 58px);
+      overflow: hidden;
+    }
+
+    /* Sidebar Editor */
+    aside {
+      width: 440px;
+      background: #111827;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .tabs-nav {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: #0b1120;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 11px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      justify-content: center;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: #1e293b55;
+    }
+
+    .tab-btn.active {
+      color: #38bdf8;
+      border-bottom-color: #38bdf8;
+      background: #1e293b88;
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+      border-color: #38bdf8;
+    }
+
+    textarea {
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .col {
+      flex: 1;
+    }
+
+    /* Accordion Cards for Dimensions */
+    .dim-card {
+      background: #1e293b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .dim-header {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      background: #1e293b;
+      font-size: 13px;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .dim-header:hover {
+      background: #273549;
+    }
+
+    .dim-badge {
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .dim-body {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      background: #141e2e;
+      display: none;
+    }
+
+    .dim-body.open {
+      display: block;
+    }
+
+    .tick-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      background: #0f172a;
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #1e293b;
+    }
+
+    .tick-item input {
+      padding: 4px 6px;
+      font-size: 12px;
+    }
+
+    .btn-icon {
+      padding: 5px;
+      border-radius: 4px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .btn-icon:hover {
+      color: var(--danger);
+      background: #ef444422;
+    }
+
+    /* Right Preview Canvas Area */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #090d16;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .canvas-toolbar {
+      padding: 8px 16px;
+      background: #111827;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .canvas-tools-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .canvas-viewport {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      background: radial-gradient(#1e293b 1px, transparent 1px);
+      background-size: 20px 20px;
+      background-color: #0b0f19;
+      position: relative;
+      padding: 30px;
+    }
+
+    #stage {
+      background: #ffffff;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      transition: transform 0.1s ease;
+      position: relative;
+      user-select: none;
+    }
+
+    /* Overlay comparator for pixel-perfect alignment */
+    #overlay-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      mix-blend-mode: difference;
+    }
+
+    /* Toast notification */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #10b981;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .color-picker-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-picker-wrap input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      cursor: pointer;
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="2" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+        <line x1="4.93" y1="19.07" x2="19.07" y2="4.93"/>
+      </svg>
+      <span>Generador Dimensional de Buyers</span>
+    </div>
+
+    <div class="actions">
+      <button id="btn-reset" title="Restablece al diseño idéntico original">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Restablecer Plantilla
+      </button>
+
+      <button id="btn-copy" class="btn-accent" title="Copia la imagen en alta definición al portapapeles">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copiar Imagen
+      </button>
+
+      <button id="btn-export-png" class="btn-primary" title="Descargar PNG en alta resolución (300 DPI / 4K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Descargar PNG
+      </button>
+
+      <button id="btn-export-svg" title="Descargar SVG vectorial">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Descargar SVG
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Body -->
+  <div class="workspace">
+    <!-- Sidebar Settings -->
+    <aside>
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="tab-axes">Dimensiones</button>
+        <button class="tab-btn" data-tab="tab-medidas">Medidas</button>
+        <button class="tab-btn" data-tab="tab-text">Títulos</button>
+        <button class="tab-btn" data-tab="tab-styles">Estilos</button>
+      </div>
+
+      <!-- Tab: Dimensiones -->
+      <div id="tab-axes" class="tab-content active">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 13px; font-weight: 600; color: #94a3b8;">8 Ejes Radiales</span>
+          <button id="btn-add-axis" style="padding: 4px 10px; font-size: 12px;">+ Nuevo Eje</button>
+        </div>
+        <div id="axes-container"></div>
+      </div>
+
+      <!-- Tab: Medidas (Panel Amarillo) -->
+      <div id="tab-medidas" class="tab-content">
+        <div class="form-group">
+          <label>Título del Panel</label>
+          <input type="text" id="medidas-title" value="Medidas">
+        </div>
+        <div class="form-group">
+          <label>Color de Fondo del Panel</label>
+          <div class="color-picker-wrap">
+            <input type="color" id="medidas-bg" value="#fff9c4">
+            <span id="medidas-bg-label" style="font-size: 12px; color: #94a3b8;">#fff9c4 (Amarillo Pastel)</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="margin: 0;">Grupos y Métricas</label>
+            <button id="btn-add-medida-group" style="padding: 3px 8px; font-size: 11px;">+ Añadir Grupo</button>
+          </div>
+          <div id="medidas-groups-container"></div>
+        </div>
+      </div>
+
+      <!-- Tab: Títulos y Nota de Rol -->
+      <div id="tab-text" class="tab-content">
+        <div class="form-group">
+          <label>Título Principal</label>
+          <input type="text" id="main-title" value="ANÁLISIS DIMENSIONAL CONFORMADO DE BUYERS">
+        </div>
+        <div class="form-group">
+          <label>Nota de Rol (Junto a DimFecha)</label>
+          <textarea id="role-note" rows="5">(dimensión de rol — se reutiliza varias veces por hecho:
+Envío / Inicio WhatsApp en Formulario, Inicio / Abandono en
+Sesión de Chat, Captación / Conversión en Buyer)</textarea>
+        </div>
+        <div class="row">
+          <div class="col form-group">
+            <label>Posición X Nota</label>
+            <input type="number" id="role-x" value="392">
+          </div>
+          <div class="col form-group">
+            <label>Posición Y Nota</label>
+            <input type="number" id="role-y" value="68">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Estilos y Comparador -->
+      <div id="tab-styles" class="tab-content">
+        <div class="form-group">
+          <label>Plantillas Rápidas</label>
+          <select id="preset-selector">
+            <option value="original">Original (Exacto Imagen de Referencia)</option>
+            <option value="original-fixed">Original (Corregido 'Convertidos')</option>
+            <option value="corporate">Azul Corporativo</option>
+            <option value="dark">Modo Oscuro</option>
+          </select>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;">
+
+        <div class="form-group">
+          <label>Herramienta de Calco y Verificación</label>
+          <div style="margin-bottom: 8px; font-size: 12px; color: #94a3b8;">
+            Superpone la imagen original enviada para verificar que coincide pixel a pixel:
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="range" id="overlay-opacity" min="0" max="100" value="0" style="flex: 1;">
+            <span id="opacity-val" style="font-size: 12px; width: 40px;">0%</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col form-group">
+            <label>Grosor de Ejes</label>
+            <input type="number" id="axis-stroke" value="1.4" step="0.1" min="0.5" max="4">
+          </div>
+          <div class="col form-group">
+            <label>Longitud Ejes</label>
+            <input type="number" id="axis-length" value="195" min="100" max="300">
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col form-group">
+            <label>Color Ejes / Texto</label>
+            <input type="color" id="primary-color" value="#000000">
+          </div>
+          <div class="col form-group">
+            <label>Color Fondo Lienzo</label>
+            <input type="color" id="bg-color" value="#ffffff">
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas Preview Viewport -->
+    <main>
+      <div class="canvas-toolbar">
+        <div class="canvas-tools-group">
+          <span style="font-size: 12px; color: var(--text-muted);">Zoom:</span>
+          <button id="zoom-out">-</button>
+          <span id="zoom-level" style="font-size: 12px; font-weight: 600; width: 45px; text-align: center;">100%</span>
+          <button id="zoom-in">+</button>
+          <button id="zoom-fit">Ajustar Pantalla</button>
+          <button id="zoom-reset">100%</button>
+        </div>
+
+        <div class="canvas-tools-group">
+          <span style="font-size: 12px; color: #94a3b8;">Resolución: 985 × 523 px</span>
+        </div>
+      </div>
+
+      <div class="canvas-viewport" id="viewport">
+        <div id="stage" style="width: 985px; height: 523px;">
+          <!-- SVG Rendering Engine -->
+          <svg id="diagram-svg" viewBox="0 0 985 523" width="985" height="523" xmlns="http://www.w3.org/2000/svg">
+            <!-- Will be rendered dynamically -->
+          </svg>
+          <!-- Optional overlay image for exact verification -->
+          <img id="overlay-img" src="referencia_original.png" alt="Overlay Reference">
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="toast-msg">Imagen copiada al portapapeles</span>
+  </div>
+
+  <script>
+    // =========================================================================
+    // MODELO DE DATOS INICIAL (7 DIMENSIONES CON NIVELES NÍTITOS Y SIN SOLAPAMIENTO)
+    // =========================================================================
+    const INITIAL_STATE = {
+      canvas: {
+        width: 985,
+        height: 523,
+        cx: 313,
+        cy: 293,
+        bgColor: '#ffffff',
+        primaryColor: '#000000',
+        axisStroke: 1.4,
+        axisLength: 195
+      },
+      title: {
+        text: 'ANÁLISIS DIMENSIONAL CONFORMADO DE BUYERS',
+        x: 518,
+        y: 36,
+        size: 14.5
+      },
+      note: {
+        text: '',
+        x: 392,
+        y: 68,
+        size: 8.5
+      },
+      medidas: {
+        title: 'Medidas',
+        bg: '#fff9c4',
+        border: '#000000',
+        x: 649,
+        y: 138,
+        width: 290,
+        height: 294,
+        groups: [
+          {
+            title: '• Costo por BUYER:',
+            items: [
+              '- Gasto en anuncios',
+              '- N° de buyers que llenan el formulario'
+            ]
+          },
+          {
+            title: '• Tasa de interés en menú digital:',
+            items: [
+              '- N° de personas que hicieron clic en el menú',
+              '- N° de personas que visitan la página'
+            ]
+          },
+          {
+            title: '• Tasa de Conversión BUYER a LEAD:',
+            items: [
+              '- N° leads',
+              '- N° buyers'
+            ]
+          }
+        ]
+      },
+      axes: [
+        {
+          id: 'dim_fecha',
+          name: 'DimFecha',
+          angle: 98,
+          titleX: 285,
+          titleY: 68,
+          titleAnchor: 'middle',
+          ticks: [
+            { r: 62, text: 'Día', tx: 318, ty: 232, anchor: 'start' },
+            { r: 102, text: 'Mes', tx: 312, ty: 192, anchor: 'start' },
+            { r: 142, text: 'Trimestre', tx: 307, ty: 152, anchor: 'start' },
+            { r: 182, text: 'Año', tx: 302, ty: 113, anchor: 'start' }
+          ]
+        },
+        {
+          id: 'dim_buyer',
+          name: 'DimBuyer',
+          angle: 50,
+          titleX: 456,
+          titleY: 125,
+          titleAnchor: 'start',
+          ticks: [
+            { r: 62, text: 'Nombre', tx: 366, ty: 248, anchor: 'start' },
+            { r: 102, text: 'Plato favorito', tx: 392, ty: 218, anchor: 'start' },
+            { r: 142, text: 'Tipo Buyer', tx: 418, ty: 187, anchor: 'start' },
+            { r: 182, text: 'Red Social', tx: 443, ty: 157, anchor: 'start' }
+          ]
+        },
+        {
+          id: 'dim_producto',
+          name: 'DimProducto',
+          angle: 0,
+          titleX: 536,
+          titleY: 297,
+          titleAnchor: 'start',
+          ticks: [
+            { r: 62, text: 'Pertene_combo', tx: 375, ty: 311, anchor: 'middle' },
+            { r: 102, text: 'Categoria', tx: 415, ty: 311, anchor: 'middle' },
+            { r: 142, text: 'Precio_base', tx: 455, ty: 311, anchor: 'middle' },
+            { r: 182, text: 'Nombre', tx: 495, ty: 311, anchor: 'middle' }
+          ]
+        },
+        {
+          id: 'dim_campana',
+          name: 'DimCampaña',
+          angle: 299,
+          titleX: 432,
+          titleY: 485,
+          titleAnchor: 'start',
+          ticks: [
+            { r: 62, text: 'Fuente UTM', tx: 358, ty: 345, anchor: 'start' },
+            { r: 102, text: 'Plato Gancho', tx: 378, ty: 380, anchor: 'start' },
+            { r: 142, text: 'Tipo Buyer Objetivo', tx: 398, ty: 415, anchor: 'start' },
+            { r: 182, text: 'Nombre', tx: 418, ty: 450, anchor: 'start' }
+          ]
+        },
+        {
+          id: 'dim_personal',
+          name: 'DimPersonal',
+          angle: 250,
+          titleX: 236,
+          titleY: 495,
+          titleAnchor: 'middle',
+          ticks: [
+            { r: 62, text: 'Nombres', tx: 278, ty: 351, anchor: 'end' },
+            { r: 102, text: 'Apellidos', tx: 264, ty: 389, anchor: 'end' },
+            { r: 142, text: 'Cargo', tx: 250, ty: 427, anchor: 'end' },
+            { r: 182, text: 'Área', tx: 236, ty: 464, anchor: 'end' }
+          ]
+        },
+        {
+          id: 'dim_red_social',
+          name: 'DimRedSocial',
+          angle: 201,
+          titleX: 98,
+          titleY: 375,
+          titleAnchor: 'end',
+          ticks: [
+            { r: 45, text: 'URL', tx: 271, ty: 298, anchor: 'middle' },
+            { r: 95, text: 'Nombre de Página', tx: 224, ty: 315, anchor: 'middle' },
+            { r: 145, text: 'Plataforma', tx: 178, ty: 333, anchor: 'middle' },
+            { r: 182, text: 'Personal', tx: 143, ty: 346, anchor: 'middle' }
+          ]
+        },
+        {
+          id: 'dim_anuncio',
+          name: 'DimAnuncio',
+          angle: 151,
+          titleX: 130,
+          titleY: 195,
+          titleAnchor: 'end',
+          ticks: [
+            { r: 62, text: 'Nombre', tx: 244, ty: 259, anchor: 'end' },
+            { r: 102, text: 'Hora Inicio', tx: 209, ty: 239, anchor: 'end' },
+            { r: 142, text: 'Horario Fin', tx: 174, ty: 220, anchor: 'end' },
+            { r: 182, text: 'Campaña', tx: 139, ty: 201, anchor: 'end' }
+          ]
+        }
+      ]
+    };
+
+    // Deep clone state
+    let state = JSON.parse(JSON.stringify(INITIAL_STATE));
+    let zoom = 1.0;
+
+    // =========================================================================
+    // RENDERIZADO DEL SVG VECTORIAL
+    // =========================================================================
+    const svgElem = document.getElementById('diagram-svg');
+
+    function renderSVG() {
+      const { canvas, title, note, medidas, axes } = state;
+      const { width, height, cx, cy, bgColor, primaryColor, axisStroke, axisLength } = canvas;
+
+      svgElem.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svgElem.setAttribute('width', width);
+      svgElem.setAttribute('height', height);
+
+      let html = '';
+
+      // Fondo
+      html += `<rect width="${width}" height="${height}" fill="${bgColor}" />`;
+
+      // Definición de marcador de flecha
+      html += `
+        <defs>
+          <marker id="arrow-marker" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="${primaryColor}" />
+          </marker>
+        </defs>
+      `;
+
+      // Título principal
+      html += `
+        <text x="${title.x}" y="${title.y}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${title.size}px" font-weight="bold" fill="${primaryColor}" letter-spacing="0.4px">
+          ${escapeHtml(title.text)}
+        </text>
+      `;
+
+      // Nota de rol (si existe texto)
+      if (note && note.text && note.text.trim()) {
+        const noteLines = note.text.split('\n');
+        html += `<text x="${note.x}" y="${note.y}" font-family="Arial, sans-serif" font-size="${note.size}px" font-style="italic" fill="${primaryColor}">`;
+        noteLines.forEach((line, idx) => {
+          html += `<tspan x="${note.x}" dy="${idx === 0 ? 0 : 12.5}">${escapeHtml(line)}</tspan>`;
+        });
+        html += `</text>`;
+      }
+
+      // Ejes y Marcas
+      axes.forEach((axis, axIdx) => {
+        const rad = (axis.angle * Math.PI) / 180;
+        const ux = Math.cos(rad);
+        const uy = -Math.sin(rad); // Y crece hacia abajo en pantalla
+        const px = -uy;
+        const py = ux;
+
+        const tipX = cx + axisLength * ux;
+        const tipY = cy + axisLength * uy;
+
+        // Línea de eje con flecha
+        html += `<line x1="${cx}" y1="${cy}" x2="${tipX.toFixed(1)}" y2="${tipY.toFixed(1)}" stroke="${primaryColor}" stroke-width="${axisStroke}" stroke-linecap="round" marker-end="url(#arrow-marker)" />`;
+
+        // Título de la dimensión (arrastrable)
+        html += `<text x="${axis.titleX}" y="${axis.titleY}" text-anchor="${axis.titleAnchor}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="10.5px" font-weight="bold" fill="${primaryColor}" class="axis-title-draggable" data-axis="${axIdx}" style="cursor: move;">${escapeHtml(axis.name)}</text>`;
+
+        // Ticks con halo blanco protector para máxima nitidez y sin sobrecorte
+        const tickHalf = 5.5;
+        axis.ticks.forEach((t, tIdx) => {
+          const tx = cx + t.r * ux;
+          const ty = cy + t.r * uy;
+          const x1 = tx + tickHalf * px;
+          const y1 = ty + tickHalf * py;
+          const x2 = tx - tickHalf * px;
+          const y2 = ty - tickHalf * py;
+
+          html += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${primaryColor}" stroke-width="${axisStroke}" />`;
+          html += `<text x="${t.tx}" y="${t.ty}" text-anchor="${t.anchor || 'middle'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="8.5px" fill="${primaryColor}" paint-order="stroke fill" stroke="#ffffff" stroke-width="3.5px" stroke-linejoin="round" stroke-linecap="round" class="tick-label-draggable" data-axis="${axIdx}" data-tick="${tIdx}" style="cursor: move;">${escapeHtml(t.text)}</text>`;
+        });
+      });
+
+      // Caja de Medidas
+      const { x: bx, y: by, width: bw, height: bh, title: mTitle, bg: mBg, border: mBorder, groups } = medidas;
+      const titleCenterX = bx + bw / 2;
+
+      html += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${mBg}" stroke="${mBorder}" stroke-width="1.6" />`;
+      html += `<text x="${titleCenterX}" y="${by + 26}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13px" font-weight="bold" fill="${primaryColor}">${escapeHtml(mTitle)}</text>`;
+      html += `<line x1="${titleCenterX - 35}" y1="${by + 34}" x2="${titleCenterX + 35}" y2="${by + 34}" stroke="${primaryColor}" stroke-width="1.3" />`;
+
+      let currY = by + 58;
+      const leftTitle = bx + 22;
+      const leftItem = bx + 34;
+
+      groups.forEach(g => {
+        html += `<text x="${leftTitle}" y="${currY}" font-family="Arial, sans-serif" font-size="9px" font-weight="bold" fill="${primaryColor}">${escapeHtml(g.title)}</text>`;
+        currY += 15;
+        g.items.forEach(it => {
+          html += `<text x="${leftItem}" y="${currY}" font-family="Arial, sans-serif" font-size="8.5px" fill="${primaryColor}">${escapeHtml(it)}</text>`;
+          currY += 13.5;
+        });
+        currY += 8;
+      });
+
+      svgElem.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      return (str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // =========================================================================
+    // CONSTRUCCIÓN DEL FORMULARIO DE EDICIÓN
+    // =========================================================================
+    function renderAxesForm() {
+      const container = document.getElementById('axes-container');
+      container.innerHTML = '';
+
+      state.axes.forEach((axis, axIdx) => {
+        const card = document.createElement('div');
+        card.className = 'dim-card';
+
+        const header = document.createElement('div');
+        header.className = 'dim-header';
+        header.innerHTML = `
+          <span>${axis.name}</span>
+          <span class="dim-badge">${axis.angle}°</span>
+        `;
+
+        const body = document.createElement('div');
+        body.className = 'dim-body';
+
+        header.addEventListener('click', () => {
+          body.classList.toggle('open');
+        });
+
+        // Controles del eje
+        let bodyHtml = `
+          <div class="row">
+            <div class="col form-group">
+              <label>Nombre</label>
+              <input type="text" class="input-axis-name" value="${axis.name}">
+            </div>
+            <div class="col form-group">
+              <label>Ángulo (°)</label>
+              <input type="number" class="input-axis-angle" value="${axis.angle}" min="0" max="360">
+            </div>
+          </div>
+          <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <label style="font-size: 11px; margin: 0; color: #94a3b8;">MARCAS / TICKS</label>
+            <button class="btn-add-tick" style="padding: 2px 7px; font-size: 11px;">+ Marca</button>
+          </div>
+          <div class="ticks-list"></div>
+        `;
+
+        body.innerHTML = bodyHtml;
+
+        const nameInput = body.querySelector('.input-axis-name');
+        nameInput.addEventListener('input', (e) => {
+          axis.name = e.target.value;
+          header.querySelector('span:first-child').innerText = axis.name;
+          renderSVG();
+        });
+
+        const angleInput = body.querySelector('.input-axis-angle');
+        angleInput.addEventListener('input', (e) => {
+          axis.angle = parseFloat(e.target.value) || 0;
+          header.querySelector('.dim-badge').innerText = axis.angle + '°';
+          updateAxisAutoPositions(axis);
+          renderSVG();
+        });
+
+        const addTickBtn = body.querySelector('.btn-add-tick');
+        addTickBtn.addEventListener('click', () => {
+          axis.ticks.push({ r: 100, text: 'Nueva Marca', tx: axis.titleX - 10, ty: axis.titleY + 10, anchor: 'start' });
+          renderAxesForm();
+          renderSVG();
+        });
+
+        const ticksList = body.querySelector('.ticks-list');
+        axis.ticks.forEach((tick, tIdx) => {
+          const tItem = document.createElement('div');
+          tItem.className = 'tick-item';
+          tItem.innerHTML = `
+            <input type="text" class="tick-text" value="${tick.text}" style="flex: 2;">
+            <input type="number" class="tick-r" value="${tick.r}" style="width: 50px;" title="Distancia desde centro">
+            <div style="display: inline-flex; gap: 2px;">
+              <button class="btn-icon btn-nudge-left" title="Mover izquierda (2px)" style="padding: 2px 4px; font-size: 10px;">◀</button>
+              <button class="btn-icon btn-nudge-right" title="Mover derecha (2px)" style="padding: 2px 4px; font-size: 10px;">▶</button>
+              <button class="btn-icon btn-nudge-up" title="Mover arriba (2px)" style="padding: 2px 4px; font-size: 10px;">▲</button>
+              <button class="btn-icon btn-nudge-down" title="Mover abajo (2px)" style="padding: 2px 4px; font-size: 10px;">▼</button>
+            </div>
+            <button class="btn-icon btn-del-tick" title="Eliminar marca">×</button>
+          `;
+
+          tItem.querySelector('.tick-text').addEventListener('input', (e) => {
+            tick.text = e.target.value;
+            renderSVG();
+          });
+
+          tItem.querySelector('.tick-r').addEventListener('input', (e) => {
+            tick.r = parseFloat(e.target.value) || 0;
+            updateTickPosition(axis, tick);
+            renderSVG();
+          });
+
+          tItem.querySelector('.btn-nudge-left').addEventListener('click', () => {
+            tick.tx = (tick.tx || 0) - 2;
+            renderSVG();
+          });
+          tItem.querySelector('.btn-nudge-right').addEventListener('click', () => {
+            tick.tx = (tick.tx || 0) + 2;
+            renderSVG();
+          });
+          tItem.querySelector('.btn-nudge-up').addEventListener('click', () => {
+            tick.ty = (tick.ty || 0) - 2;
+            renderSVG();
+          });
+          tItem.querySelector('.btn-nudge-down').addEventListener('click', () => {
+            tick.ty = (tick.ty || 0) + 2;
+            renderSVG();
+          });
+
+          tItem.querySelector('.btn-del-tick').addEventListener('click', () => {
+            axis.ticks.splice(tIdx, 1);
+            renderAxesForm();
+            renderSVG();
+          });
+
+          ticksList.appendChild(tItem);
+        });
+
+        card.appendChild(header);
+        card.appendChild(body);
+        container.appendChild(card);
+      });
+    }
+
+    function updateAxisAutoPositions(axis) {
+      const { cx, cy, axisLength } = state.canvas;
+      const rad = (axis.angle * Math.PI) / 180;
+      const ux = Math.cos(rad);
+      const uy = -Math.sin(rad);
+
+      axis.titleX = Math.round(cx + (axisLength + 24) * ux);
+      axis.titleY = Math.round(cy + (axisLength + 24) * uy);
+
+      if (Math.abs(ux) < 0.2) {
+        axis.titleAnchor = 'middle';
+      } else if (ux > 0) {
+        axis.titleAnchor = 'start';
+      } else {
+        axis.titleAnchor = 'end';
+      }
+
+      axis.ticks.forEach(t => updateTickPosition(axis, t));
+    }
+
+    function updateTickPosition(axis, t) {
+      const { cx, cy } = state.canvas;
+      const rad = (axis.angle * Math.PI) / 180;
+      const ux = Math.cos(rad);
+      const uy = -Math.sin(rad);
+
+      const tx = cx + t.r * ux;
+      const ty = cy + t.r * uy;
+
+      // Vertical hacia arriba (DimFecha, ~70° a 110°): a la derecha del eje
+      if (axis.angle >= 70 && axis.angle <= 110) {
+        t.tx = Math.round(tx + 14);
+        t.ty = Math.round(ty);
+        t.anchor = 'start';
+      }
+      // Vertical hacia abajo (DimPersonal, ~240° a 280°): a la izquierda del eje
+      else if (axis.angle >= 240 && axis.angle <= 280) {
+        t.tx = Math.round(tx - 14);
+        t.ty = Math.round(ty);
+        t.anchor = 'end';
+      }
+      // Horizontal hacia la derecha (DimProducto, -15° a 15° o 345° a 360°): debajo del eje
+      else if (axis.angle <= 15 || axis.angle >= 345) {
+        t.tx = Math.round(tx);
+        t.ty = Math.round(ty + 18);
+        t.anchor = 'middle';
+      }
+      // Horizontal hacia la izquierda (DimRedSocial, 170° a 215°): encima del eje
+      else if (axis.angle >= 170 && axis.angle <= 215) {
+        t.tx = Math.round(tx);
+        t.ty = Math.round(ty - 14);
+        t.anchor = 'middle';
+      }
+      // Cuadrante 1 Arriba-Derecha (DimBuyer, 15° a 70°): a la derecha
+      else if (axis.angle > 15 && axis.angle < 70) {
+        t.tx = Math.round(tx + 14);
+        t.ty = Math.round(ty + 2);
+        t.anchor = 'start';
+      }
+      // Cuadrante 2 Arriba-Izquierda (DimAnuncio, 110° a 170°): a la izquierda
+      else if (axis.angle > 110 && axis.angle < 170) {
+        t.tx = Math.round(tx - 14);
+        t.ty = Math.round(ty - 4);
+        t.anchor = 'end';
+      }
+      // Cuadrante 4 Abajo-Derecha (DimCampaña, 280° a 345°): a la derecha
+      else if (axis.angle > 280 && axis.angle < 345) {
+        t.tx = Math.round(tx + 14);
+        t.ty = Math.round(ty - 2);
+        t.anchor = 'start';
+      }
+      // Otros (Cuadrante 3 Abajo-Izquierda, 215° a 240°): a la izquierda
+      else {
+        t.tx = Math.round(tx - 14);
+        t.ty = Math.round(ty + 4);
+        t.anchor = 'end';
+      }
+    }
+
+    function renderMedidasForm() {
+      const container = document.getElementById('medidas-groups-container');
+      container.innerHTML = '';
+
+      state.medidas.groups.forEach((group, gIdx) => {
+        const gBox = document.createElement('div');
+        gBox.style.cssText = 'background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #1e293b;';
+
+        const gHeader = document.createElement('div');
+        gHeader.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
+        gHeader.innerHTML = `
+          <input type="text" class="group-title-input" value="${group.title}" style="flex: 1; font-weight: bold;">
+          <button class="btn-icon btn-del-group" title="Eliminar grupo">×</button>
+        `;
+
+        gHeader.querySelector('.group-title-input').addEventListener('input', (e) => {
+          group.title = e.target.value;
+          renderSVG();
+        });
+
+        gHeader.querySelector('.btn-del-group').addEventListener('click', () => {
+          state.medidas.groups.splice(gIdx, 1);
+          renderMedidasForm();
+          renderSVG();
+        });
+
+        gBox.appendChild(gHeader);
+
+        const itemsBox = document.createElement('div');
+        group.items.forEach((item, itIdx) => {
+          const itRow = document.createElement('div');
+          itRow.style.cssText = 'display: flex; gap: 6px; margin-bottom: 4px;';
+          itRow.innerHTML = `
+            <input type="text" class="item-text-input" value="${item}" style="flex: 1; font-size: 12px; padding: 4px 8px;">
+            <button class="btn-icon btn-del-item" title="Eliminar métrica">×</button>
+          `;
+
+          itRow.querySelector('.item-text-input').addEventListener('input', (e) => {
+            group.items[itIdx] = e.target.value;
+            renderSVG();
+          });
+
+          itRow.querySelector('.btn-del-item').addEventListener('click', () => {
+            group.items.splice(itIdx, 1);
+            renderMedidasForm();
+            renderSVG();
+          });
+
+          itemsBox.appendChild(itRow);
+        });
+
+        const addItemBtn = document.createElement('button');
+        addItemBtn.style.cssText = 'padding: 2px 8px; font-size: 11px; margin-top: 4px;';
+        addItemBtn.innerText = '+ Métrica';
+        addItemBtn.addEventListener('click', () => {
+          group.items.push('- Nueva métrica');
+          renderMedidasForm();
+          renderSVG();
+        });
+
+        gBox.appendChild(itemsBox);
+        gBox.appendChild(addItemBtn);
+        container.appendChild(gBox);
+      });
+    }
+
+    // =========================================================================
+    // EXPORTACIÓN A PNG Y COPIAR AL PORTAPAPELES
+    // =========================================================================
+    function getCanvasBlob(scale = 2) {
+      return new Promise((resolve) => {
+        const svgString = new XMLSerializer().serializeToString(svgElem);
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const URL = window.URL || window.webkitURL || window;
+        const blobURL = URL.createObjectURL(svgBlob);
+
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = state.canvas.width * scale;
+          canvas.height = state.canvas.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(blobURL);
+
+          canvas.toBlob((blob) => resolve(blob), 'image/png');
+        };
+        img.src = blobURL;
+      });
+    }
+
+    // Copiar al portapapeles
+    document.getElementById('btn-copy').addEventListener('click', async () => {
+      try {
+        const blob = await getCanvasBlob(2);
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        showToast('¡Imagen copiada al portapapeles!');
+      } catch (err) {
+        console.error(err);
+        showToast('No se pudo copiar directamente. Usa Descargar PNG.');
+      }
+    });
+
+    // Descargar PNG
+    document.getElementById('btn-export-png').addEventListener('click', async () => {
+      const blob = await getCanvasBlob(2);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'analisis_dimensional_buyers.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Descargando PNG en alta resolución...');
+    });
+
+    // Descargar SVG
+    document.getElementById('btn-export-svg').addEventListener('click', () => {
+      const svgString = new XMLSerializer().serializeToString(svgElem);
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'analisis_dimensional_buyers.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Descargando archivo SVG...');
+    });
+
+    // Toast
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // =========================================================================
+    // EVENT LISTENERS DE CONTROLES
+    // =========================================================================
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Título Principal y Nota
+    document.getElementById('main-title').addEventListener('input', (e) => {
+      state.title.text = e.target.value;
+      renderSVG();
+    });
+
+    document.getElementById('role-note').addEventListener('input', (e) => {
+      state.note.text = e.target.value;
+      renderSVG();
+    });
+
+    document.getElementById('role-x').addEventListener('input', (e) => {
+      state.note.x = parseFloat(e.target.value) || 392;
+      renderSVG();
+    });
+
+    document.getElementById('role-y').addEventListener('input', (e) => {
+      state.note.y = parseFloat(e.target.value) || 68;
+      renderSVG();
+    });
+
+    // Medidas
+    document.getElementById('medidas-title').addEventListener('input', (e) => {
+      state.medidas.title = e.target.value;
+      renderSVG();
+    });
+
+    document.getElementById('medidas-bg').addEventListener('input', (e) => {
+      state.medidas.bg = e.target.value;
+      document.getElementById('medidas-bg-label').innerText = e.target.value;
+      renderSVG();
+    });
+
+    document.getElementById('btn-add-medida-group').addEventListener('click', () => {
+      state.medidas.groups.push({
+        title: '• Nuevo Indicador:',
+        items: ['- Métrica 1', '- Métrica 2']
+      });
+      renderMedidasForm();
+      renderSVG();
+    });
+
+    // Presets
+    document.getElementById('preset-selector').addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (val === 'original') {
+        state = JSON.parse(JSON.stringify(INITIAL_STATE));
+      } else if (val === 'original-fixed') {
+        state = JSON.parse(JSON.stringify(INITIAL_STATE));
+        state.medidas.groups[0].items[1] = '- Leads Convertidos';
+      } else if (val === 'corporate') {
+        state.canvas.primaryColor = '#1e3a8a';
+        state.medidas.bg = '#eff6ff';
+        state.medidas.border = '#1e3a8a';
+      } else if (val === 'dark') {
+        state.canvas.bgColor = '#0f172a';
+        state.canvas.primaryColor = '#38bdf8';
+        state.medidas.bg = '#1e293b';
+        state.medidas.border = '#38bdf8';
+      }
+      syncInputs();
+      renderAxesForm();
+      renderMedidasForm();
+      renderSVG();
+    });
+
+    // Reset button
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      if (confirm('¿Restablecer el diagrama al diseño idéntico original?')) {
+        state = JSON.parse(JSON.stringify(INITIAL_STATE));
+        syncInputs();
+        renderAxesForm();
+        renderMedidasForm();
+        renderSVG();
+        showToast('Plantilla original restablecida');
+      }
+    });
+
+    // Overlay Opacity slider
+    const overlayImg = document.getElementById('overlay-img');
+    const opacitySlider = document.getElementById('overlay-opacity');
+    const opacityVal = document.getElementById('opacity-val');
+
+    opacitySlider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      opacityVal.innerText = val + '%';
+      overlayImg.style.opacity = val / 100;
+    });
+
+    // Estilos generales
+    document.getElementById('axis-stroke').addEventListener('input', (e) => {
+      state.canvas.axisStroke = parseFloat(e.target.value) || 1.4;
+      renderSVG();
+    });
+
+    document.getElementById('axis-length').addEventListener('input', (e) => {
+      state.canvas.axisLength = parseFloat(e.target.value) || 195;
+      renderSVG();
+    });
+
+    document.getElementById('primary-color').addEventListener('input', (e) => {
+      state.canvas.primaryColor = e.target.value;
+      renderSVG();
+    });
+
+    document.getElementById('bg-color').addEventListener('input', (e) => {
+      state.canvas.bgColor = e.target.value;
+      document.getElementById('stage').style.backgroundColor = e.target.value;
+      renderSVG();
+    });
+
+    // Zoom controls
+    const stage = document.getElementById('stage');
+    const zoomLevel = document.getElementById('zoom-level');
+
+    function updateZoom(newZoom) {
+      zoom = Math.max(0.4, Math.min(3.0, newZoom));
+      stage.style.transform = `scale(${zoom})`;
+      zoomLevel.innerText = Math.round(zoom * 100) + '%';
+    }
+
+    document.getElementById('zoom-in').addEventListener('click', () => updateZoom(zoom + 0.15));
+    document.getElementById('zoom-out').addEventListener('click', () => updateZoom(zoom - 0.15));
+    document.getElementById('zoom-reset').addEventListener('click', () => updateZoom(1.0));
+    document.getElementById('zoom-fit').addEventListener('click', () => {
+      const viewport = document.getElementById('viewport');
+      const scaleX = (viewport.clientWidth - 60) / 985;
+      const scaleY = (viewport.clientHeight - 60) / 523;
+      updateZoom(Math.min(scaleX, scaleY));
+    });
+
+    // Arrastre interactivo de textos directamente en el SVG
+    let draggingItem = null;
+    let dragStartMouse = { x: 0, y: 0 };
+    let dragStartPos = { x: 0, y: 0 };
+
+    svgElem.addEventListener('mousedown', (e) => {
+      const target = e.target;
+      if (target.classList.contains('tick-label-draggable')) {
+        const axIdx = parseInt(target.getAttribute('data-axis'), 10);
+        const tIdx = parseInt(target.getAttribute('data-tick'), 10);
+        const tick = state.axes[axIdx].ticks[tIdx];
+        draggingItem = { type: 'tick', obj: tick };
+        dragStartMouse = { x: e.clientX, y: e.clientY };
+        dragStartPos = { x: tick.tx, y: tick.ty };
+        e.preventDefault();
+      } else if (target.classList.contains('axis-title-draggable')) {
+        const axIdx = parseInt(target.getAttribute('data-axis'), 10);
+        const axis = state.axes[axIdx];
+        draggingItem = { type: 'title', obj: axis };
+        dragStartMouse = { x: e.clientX, y: e.clientY };
+        dragStartPos = { x: axis.titleX, y: axis.titleY };
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!draggingItem) return;
+      const dx = (e.clientX - dragStartMouse.x) / zoom;
+      const dy = (e.clientY - dragStartMouse.y) / zoom;
+      if (draggingItem.type === 'tick') {
+        draggingItem.obj.tx = Math.round(dragStartPos.x + dx);
+        draggingItem.obj.ty = Math.round(dragStartPos.y + dy);
+      } else if (draggingItem.type === 'title') {
+        draggingItem.obj.titleX = Math.round(dragStartPos.x + dx);
+        draggingItem.obj.titleY = Math.round(dragStartPos.y + dy);
+      }
+      renderSVG();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (draggingItem) {
+        draggingItem = null;
+      }
+    });
+
+    // Sincronizar inputs iniciales
+    function syncInputs() {
+      document.getElementById('main-title').value = state.title.text;
+      document.getElementById('role-note').value = state.note.text;
+      document.getElementById('role-x').value = state.note.x;
+      document.getElementById('role-y').value = state.note.y;
+      document.getElementById('medidas-title').value = state.medidas.title;
+      document.getElementById('medidas-bg').value = state.medidas.bg;
+      document.getElementById('axis-stroke').value = state.canvas.axisStroke;
+      document.getElementById('axis-length').value = state.canvas.axisLength;
+      document.getElementById('primary-color').value = state.canvas.primaryColor;
+      document.getElementById('bg-color').value = state.canvas.bgColor;
+    }
+
+    // Inicialización
+    syncInputs();
+    renderAxesForm();
+    renderMedidasForm();
+    renderSVG();
+
+    // Auto-fit inicial suave
+    window.addEventListener('load', () => {
+      document.getElementById('zoom-fit').click();
+    });
+  </script>
+</body>
+</html>
