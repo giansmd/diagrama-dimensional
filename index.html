@@ -742,6 +742,28 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
     // Deep clone state
     let state = JSON.parse(JSON.stringify(INITIAL_STATE));
+    const SAVE_KEY = 'gdc-estado-v1';
+    // Restaurar estado guardado (localStorage)
+    let _saved = null;
+    try { _saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { _saved = null; }
+    if (_saved && _saved.s && _saved.s.canvas) {
+      state = _saved.s;
+    }
+
+    // === Persistencia client-side (localStorage) ===
+        let resetting = false;
+    let _saveTimer = null;
+    function guardarEstado() {
+      if (resetting) return;
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({s: state, z: zoom}));
+      } catch (e) {}
+    }
+    function guardarDebounced() {
+      clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(guardarEstado, 600);
+    }
+
     let zoom = 1.0;
 
     // =========================================================================
@@ -750,6 +772,7 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
     const svgElem = document.getElementById('diagram-svg');
 
     function renderSVG() {
+      guardarDebounced();
       const { canvas, title, note, medidas, axes } = state;
       const { width, height, cx, cy, bgColor, primaryColor, axisStroke, axisLength } = canvas;
 
@@ -1286,6 +1309,9 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
     // Reset button
     document.getElementById('btn-reset').addEventListener('click', () => {
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      resetting = true;
+      setTimeout(() => { resetting = false; }, 1000);
       if (confirm('¿Restablecer el diagrama al diseño idéntico original?')) {
         state = JSON.parse(JSON.stringify(INITIAL_STATE));
         syncInputs();
@@ -1334,6 +1360,7 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
     const zoomLevel = document.getElementById('zoom-level');
 
     function updateZoom(newZoom) {
+      guardarDebounced();
       zoom = Math.max(0.4, Math.min(3.0, newZoom));
       stage.style.transform = `scale(${zoom})`;
       zoomLevel.innerText = Math.round(zoom * 100) + '%';
