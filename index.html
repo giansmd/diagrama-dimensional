@@ -523,6 +523,17 @@
       text-align: center;
       padding: 10px 0;
     }
+    .tip-handle {
+      fill: transparent;
+      transition: fill 0.15s ease, stroke 0.15s ease;
+    }
+
+    .tip-handle:hover {
+      fill: rgba(148, 163, 184, 0.18);
+      stroke: #94a3b8;
+      stroke-width: 1.4;
+    }
+
   </style>
 </head>
 <body>
@@ -582,7 +593,7 @@
       <!-- Tab: Dimensiones -->
       <div id="tab-axes" class="tab-content active">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <span style="font-size: 13px; font-weight: 600; color: #94a3b8;">8 Ejes Radiales</span>
+          <span style="font-size: 13px; font-weight: 600; color: #94a3b8;" id="axes-count">8 Ejes Radiales</span>
           <button id="btn-add-axis" style="padding: 4px 10px; font-size: 12px;">+ Nuevo Eje</button>
         </div>
         <div id="axes-container"></div>
@@ -938,10 +949,23 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
     let zoom = 1.0;
 
-    // Longitud efectiva por eje: si el usuario arrastró la punta de la flecha,
-    // ese eje tiene su propia len; si no, hereda la global axisLength.
+    // Longitud efectiva y punta por eje. Si el usuario arrastró la punta
+    // (axis.tip = {x,y}), ese punto manda; si no, se deriva de ángulo + len.
     function axisLenOf(axis) {
+      if (axis.tip && typeof axis.tip.x === 'number') {
+        return Math.hypot(axis.tip.x - state.canvas.cx, axis.tip.y - state.canvas.cy);
+      }
       return (typeof axis.len === 'number') ? axis.len : state.canvas.axisLength;
+    }
+
+    function axisTipOf(axis) {
+      const { cx, cy } = state.canvas;
+      if (axis.tip && typeof axis.tip.x === 'number') {
+        return { x: axis.tip.x, y: axis.tip.y };
+      }
+      const len = (typeof axis.len === 'number') ? axis.len : state.canvas.axisLength;
+      const rad = (axis.angle * Math.PI) / 180;
+      return { x: cx + len * Math.cos(rad), y: cy + len * (-Math.sin(rad)) };
     }
 
     // =========================================================================
@@ -991,23 +1015,26 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
       // Ejes y Marcas
       axes.forEach((axis, axIdx) => {
-        const rad = (axis.angle * Math.PI) / 180;
-        const ux = Math.cos(rad);
-        const uy = -Math.sin(rad); // Y crece hacia abajo en pantalla
+        // Punta real de la flecha: si el usuario arrastró la punta, ese punto
+        // manda (posición libre); si no, se deriva del ángulo + longitud.
+        const tipPos = axisTipOf(axis);
+        const tipX = tipPos.x;
+        const tipY = tipPos.y;
+        const dxT = tipX - cx;
+        const dyT = tipY - cy;
+        const uLen = Math.hypot(dxT, dyT) || 1;
+        const ux = dxT / uLen; // dirección real de la flecha (coordenadas pantalla)
+        const uy = dyT / uLen;
         const px = -uy;
         const py = ux;
-
-        const lenAxis = axisLenOf(axis);
-        const tipX = cx + lenAxis * ux;
-        const tipY = cy + lenAxis * uy;
 
         // Línea de eje con flecha
         html += `<line x1="${cx}" y1="${cy}" x2="${tipX.toFixed(1)}" y2="${tipY.toFixed(1)}" stroke="${primaryColor}" stroke-width="${axisStroke}" stroke-linecap="round" marker-end="url(#arrow-marker)" />`;
 
-        // Manejador de la punta del eje (arrastrable: mover/estender la flecha).
-        // Clase no-export: se elimina al exportar PNG/SVG.
-        html += `<circle cx="${tipX.toFixed(1)}" cy="${tipY.toFixed(1)}" r="10" fill="transparent" class="axis-tip-draggable no-export" data-axis="${axIdx}" style="cursor: grab;" />`;
-        html += `<circle cx="${tipX.toFixed(1)}" cy="${tipY.toFixed(1)}" r="4.2" fill="${bgColor}" stroke="${primaryColor}" stroke-width="1.3" class="axis-tip-draggable no-export" data-axis="${axIdx}" style="cursor: grab;" />`;
+        // Zona invisible de agarre de la punta (mover/extender la flecha libremente).
+        // Sin punto visible: la flecha es lo que se ve. La clase no-export se
+        // elimina al exportar PNG/SVG.
+        html += `<circle cx="${tipX.toFixed(1)}" cy="${tipY.toFixed(1)}" r="12" fill="transparent" class="axis-tip-draggable no-export tip-handle" data-axis="${axIdx}" style="cursor: grab;" />`;
 
         // Título de la dimensión (arrastrable)
         html += `<text x="${axis.titleX}" y="${axis.titleY}" text-anchor="${axis.titleAnchor}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="10.5px" font-weight="bold" fill="${primaryColor}" class="axis-title-draggable" data-axis="${axIdx}" style="cursor: move;">${escapeHtml(axis.name)}</text>`;
@@ -1077,6 +1104,8 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
     function renderAxesForm() {
       const container = document.getElementById('axes-container');
       container.innerHTML = '';
+      const countLbl = document.getElementById('axes-count');
+      if (countLbl) countLbl.innerHTML = `${state.axes.length} Ejes radiales (clic en un eje para editar)`;
 
       state.axes.forEach((axis, axIdx) => {
         const card = document.createElement('div');
@@ -1084,10 +1113,25 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
         const header = document.createElement('div');
         header.className = 'dim-header';
+        const tipNow = axisTipOf(axis);
+        const angNow = Math.round(((Math.atan2(-(tipNow.y - state.canvas.cy), tipNow.x - state.canvas.cx) * 180 / Math.PI) % 360 + 360) % 360);
         header.innerHTML = `
           <span>${axis.name}</span>
-          <span class="dim-badge">${axis.angle}°</span>
+          <span style="display: flex; gap: 6px; align-items: center;">
+            <span class="dim-badge">${angNow}°</span>
+            <button class="btn-icon btn-del-axis" title="Eliminar esta dimensión del diagrama" style="padding: 1px 6px; font-size: 13px; line-height: 1;">×</button>
+          </span>
         `;
+
+        // Eliminar eje completo (confirmación incluida)
+        header.querySelector('.btn-del-axis').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!confirm(`¿Eliminar "${axis.name}" y todas sus marcas del diagrama?`)) return;
+          state.axes.splice(axIdx, 1);
+          renderAxesForm();
+          renderSVG();
+          showToast(`Eje eliminado: ${axis.name}`);
+        });
 
         const body = document.createElement('div');
         body.className = 'dim-body';
@@ -1128,6 +1172,9 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         angleInput.addEventListener('input', (e) => {
           axis.angle = parseFloat(e.target.value) || 0;
           header.querySelector('.dim-badge').innerText = axis.angle + '°';
+          // Si la punta había sido arrastrada libremente, el nuevo ángulo
+          // re-polariza la flecha conservando su longitud actual.
+          if (axis.tip) { axis.len = axisLenOf(axis); delete axis.tip; }
           updateAxisAutoPositions(axis);
           renderSVG();
         });
@@ -1764,26 +1811,27 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         const tick = state.axes[axIdx].ticks[tIdx];
         const { cx, cy } = state.canvas;
         const axis = state.axes[axIdx];
-        const rad = (axis.angle * Math.PI) / 180;
-        // Arrastrar la rayita mueve su posición radial (t.r). La etiqueta
-        // mantiene su posición propia; si quieres que la siga, se suelta después.
-        const txr = cx + tick.r * Math.cos(rad);
-        const tyr = cy + tick.r * (-Math.sin(rad));
-        draggingItem = { type: 'tickLine', obj: tick, cx, cy, ux: Math.cos(rad), uy: -Math.sin(rad), r0: tick.r };
+        // Arrastrar la rayita mueve su posición radial (t.r) siguiendo la
+        // dirección REAL de la flecha (por si el usuario redirigió la punta).
+        const tdir = axisTipOf(axis);
+        const thyp = Math.hypot(tdir.x - cx, tdir.y - cy) || 1;
+        const tux = (tdir.x - cx) / thyp;
+        const tuy = (tdir.y - cy) / thyp;
+        const txr = cx + tick.r * tux;
+        const tyr = cy + tick.r * tuy;
+        draggingItem = { type: 'tickLine', obj: tick, axisRef: axis, cx, cy, r0: tick.r };
         dragStartMouse = { x: e.clientX, y: e.clientY };
         dragStartPos = { x: txr, y: tyr };
         e.preventDefault();
       } else if (target.classList.contains('axis-tip-draggable')) {
         const axIdx = parseInt(target.getAttribute('data-axis'), 10);
         const axis = state.axes[axIdx];
-        const { cx, cy } = state.canvas;
-        const rad = (axis.angle * Math.PI) / 180;
-        const ux = Math.cos(rad);
-        const uy = -Math.sin(rad);
-        const len0 = axisLenOf(axis);
-        draggingItem = { type: 'tip', obj: axis, cx, cy, ux, uy, len0 };
+        const tp = axisTipOf(axis);
+        // Arrastre libre 2D: la punta sigue al mouse, la flecha apunta adonde
+        // se deje (ángulo y longitud se derivan de la posición).
+        draggingItem = { type: 'tip', obj: axis };
         dragStartMouse = { x: e.clientX, y: e.clientY };
-        dragStartPos = { x: cx + len0 * ux, y: cy + len0 * uy };
+        dragStartPos = { x: tp.x, y: tp.y };
         e.preventDefault();
       } else if (target.classList.contains('axis-title-draggable')) {
         const axIdx = parseInt(target.getAttribute('data-axis'), 10);
@@ -1817,13 +1865,21 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         draggingItem.obj.titleX = Math.round(dragStartPos.x + dx);
         draggingItem.obj.titleY = Math.round(dragStartPos.y + dy);
       } else if (d.type === 'tip') {
-        // Proyección del mouse sobre la dirección del eje → longitud del eje
-        const len = Math.round((dragStartPos.x + dx - d.cx) * d.ux + (dragStartPos.y + dy - d.cy) * d.uy);
-        const maxLen = Math.hypot(state.canvas.width, state.canvas.height);
-        draggingItem.obj.len = Math.max(30, Math.min(maxLen, len));
+        // Posición libre 2D de la punta, dentro del lienzo
+        const { width, height } = state.canvas;
+        const nx = Math.round(Math.max(10, Math.min(width - 10, dragStartPos.x + dx)));
+        const ny = Math.round(Math.max(10, Math.min(height - 10, dragStartPos.y + dy)));
+        draggingItem.obj.tip = { x: nx, y: ny };
+        delete draggingItem.obj.len;
       } else if (d.type === 'tickLine') {
-        const r = Math.round((dragStartPos.x + dx - d.cx) * d.ux + (dragStartPos.y + dy - d.cy) * d.uy);
-        draggingItem.obj.r = Math.max(5, Math.min(999, r));
+        // Dirección real de la flecha de este eje (por si la giraron)
+        const ax2 = d.axisRef;
+        const tipAx = axisTipOf(ax2);
+        const hyp2 = Math.hypot(tipAx.x - d.cx, tipAx.y - d.cy) || 1;
+        const ux2 = (tipAx.x - d.cx) / hyp2;
+        const uy2 = (tipAx.y - d.cy) / hyp2;
+        const rr = Math.round((dragStartPos.x + dx - d.cx) * ux2 + (dragStartPos.y + dy - d.cy) * uy2);
+        draggingItem.obj.r = Math.max(5, Math.min(999, rr));
       } else if (d.type === 'medidasMove') {
         const m = draggingItem.obj;
         const { width, height } = state.canvas;
