@@ -537,6 +537,75 @@
       transition: fill 0.15s ease, stroke 0.15s ease;
     }
 
+    .quick-json {
+      width: 100%;
+      font-family: "Cascadia Code", Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      background: #0b1120;
+      color: #e2e8f0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      resize: vertical;
+      outline: none;
+    }
+
+    .quick-json:focus {
+      border-color: var(--primary);
+    }
+
+    .quick-error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+      font-size: 11.5px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .quick-example {
+      display: block;
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 10.5px;
+      line-height: 1.4;
+      overflow-x: auto;
+      color: #7dd3fc;
+      margin: 8px 0 0 0;
+    }
+
+    .quick-help {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .quick-help summary {
+      cursor: pointer;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .quick-help-body {
+      padding: 10px 4px;
+      color: #94a3b8;
+      font-size: 11.5px;
+    }
+
+    .quick-help-body code {
+      color: #7dd3fc;
+      background: #0b1120;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 10.5px;
+    }
+
     .tip-handle:hover {
       fill: rgba(148, 163, 184, 0.18);
       stroke: #94a3b8;
@@ -597,6 +666,7 @@
         <button class="tab-btn" data-tab="tab-medidas">Medidas</button>
         <button class="tab-btn" data-tab="tab-text">Títulos</button>
         <button class="tab-btn" data-tab="tab-styles">Estilos</button>
+        <button class="tab-btn" data-tab="tab-quick">Creación rápida</button>
       </div>
 
       <!-- Tab: Dimensiones -->
@@ -714,6 +784,68 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
             <input type="color" id="bg-color" value="#ffffff">
           </div>
         </div>
+      </div>
+
+      <!-- Sección: Creación Rápida (JSON) -->
+      <div id="tab-quick" class="tab-content active">
+        <h2 class="section-label">5 · Creación Rápida (JSON)</h2>
+        <div class="form-group">
+          <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">
+            Pega un JSON y genera las dimensiones y niveles al instante. Ver el formato en "¿Cómo se usa?".
+          </div>
+          <textarea id="quick-json" class="quick-json" rows="16" spellcheck="false" placeholder='{"configuracion": {...}, "dimensiones": {...}}'></textarea>
+        </div>
+        <div id="quick-error" class="quick-error" style="display:none;"></div>
+        <div style="display: flex; gap: 6px; margin: 8px 0;">
+          <button id="btn-quick-generar" class="btn-primary" style="flex: 1;" title="Genera las dimensiones/niveles desde el JSON y REEMPLAZA los ejes actuales">⚡ Generar diagrama (reemplaza ejes)</button>
+          <button id="btn-quick-anadir" style="flex: 1;" title="Añade las dimensiones del JSON a las existentes">+ Añadir ejes</button>
+        </div>
+        <details class="quick-help">
+          <summary>¿Cómo se usa? (formato y ejemplo)</summary>
+          <div class="quick-help-body">
+            <div class="quick-doc">
+              <b>configuracion</b> (todo opcional):<br>
+              • <code>titulo</code> — texto del título principal<br>
+              • <code>color_ejes</code>, <code>color_fondo</code> — colores hex<br>
+              • <code>longitud_ejes</code> — largo de las flechas<br>
+              • <code>angulos</code> — objeto <code>{ "inicio": 98, "paso": 51.4, "sentido": "horario" }</code> o array <code>[98, 50, 300]</code><br>
+              • <code>marcas_por_defecto</code> — <code>{ "cantidad": 4, "nombres": ["Día","Mes","Trimestre","Año"], "radio_inicio": 60, "paso_radio": 40 }</code><br><br>
+              <b>dimensiones</b> (cada eje; el título puede ser lo que quieras):<br>
+              • <code>nombre</code> — opcional (por defecto usa la clave)<br>
+              • <code>corte</code> — array de niveles (también acepta <code>niveles</code>/<code>marcas</code> o texto "a, b, c")<br>
+              • <code>angulo</code> — ángulo explícito de este eje<br>
+              • <code>estilo</code> — <code>{ "color": "#hex", "grosor": 1.4 }</code><br>
+              • <code>radio_inicio</code> / <code>paso_radio</code> — opcional por eje
+            </div>
+<pre class="quick-example">{
+  "configuracion": {
+    "titulo": "ANÁLISIS CLIENTES 2026",
+    "color_ejes": "#000000",
+    "angulos": { "inicio": 98, "sentido": "horario" },
+    "marcas_por_defecto": {
+      "cantidad": 3,
+      "nombres": ["Nivel A", "Nivel B", "Nivel C"],
+      "radio_inicio": 60,
+      "paso_radio": 40
+    }
+  },
+  "dimensiones": {
+    "dimTiempo": {
+      "corte": ["Día", "Mes", "Trimestre"]
+    },
+    "dimProducto": {
+      "corte": ["Categoría", "Precio", "Stock"],
+      "estilo": { "color": "#0e7490" }
+    },
+    "dimCanal": {
+      "nombre": "DimCanal",
+      "corte": ["Web", "App", "Tienda"],
+      "angulo": 280
+    }
+  }
+}</pre>
+          </div>
+        </details>
       </div>
     </aside>
 
@@ -1033,6 +1165,10 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         const tipPos = axisTipOf(axis);
         const tipX = tipPos.x;
         const tipY = tipPos.y;
+        // Color y grosor propios del eje (si vienen de "estilo" en el JSON);
+        // si no, heredan los globales.
+        const colAx = (axis.estilo && axis.estilo.color) ? axis.estilo.color : primaryColor;
+        const strAx = (axis.estilo && typeof axis.estilo.grosor === 'number') ? axis.estilo.grosor : axisStroke;
         const dxT = tipX - cx;
         const dyT = tipY - cy;
         const uLen = Math.hypot(dxT, dyT) || 1;
@@ -1041,8 +1177,11 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         const px = -uy;
         const py = ux;
 
+        // Definición de marcador de flecha específico del eje (permite color propio)
+        html += `<defs><marker id="arrow-marker-ax${axIdx}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="${colAx}"/></marker></defs>`;
+
         // Línea de eje con flecha
-        html += `<line x1="${cx}" y1="${cy}" x2="${tipX.toFixed(1)}" y2="${tipY.toFixed(1)}" stroke="${primaryColor}" stroke-width="${axisStroke}" stroke-linecap="round" marker-end="url(#arrow-marker)" />`;
+        html += `<line x1="${cx}" y1="${cy}" x2="${tipX.toFixed(1)}" y2="${tipY.toFixed(1)}" stroke="${colAx}" stroke-width="${strAx}" stroke-linecap="round" marker-end="url(#arrow-marker-ax${axIdx})" />`;
 
         // Zona invisible de agarre de la punta (mover/extender la flecha libremente).
         // Sin punto visible: la flecha es lo que se ve. La clase no-export se
@@ -1050,7 +1189,7 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         html += `<circle cx="${tipX.toFixed(1)}" cy="${tipY.toFixed(1)}" r="12" fill="transparent" class="axis-tip-draggable no-export tip-handle" data-axis="${axIdx}" style="cursor: grab;" />`;
 
         // Título de la dimensión (arrastrable)
-        html += `<text x="${axis.titleX}" y="${axis.titleY}" text-anchor="${axis.titleAnchor}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="10.5px" font-weight="bold" fill="${primaryColor}" class="axis-title-draggable" data-axis="${axIdx}" style="cursor: move;">${escapeHtml(axis.name)}</text>`;
+        html += `<text x="${axis.titleX}" y="${axis.titleY}" text-anchor="${axis.titleAnchor}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="10.5px" font-weight="bold" fill="${colAx}" class="axis-title-draggable" data-axis="${axIdx}" style="cursor: move;">${escapeHtml(axis.name)}</text>`;
 
         // Ticks con halo blanco protector para máxima nitidez y sin sobrecorte
         const tickHalf = 5.5;
@@ -1062,10 +1201,10 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
           const x2 = tx - tickHalf * px;
           const y2 = ty - tickHalf * py;
 
-          html += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${primaryColor}" stroke-width="${axisStroke}" />`;
+          html += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${colAx}" stroke-width="${strAx}" />`;
           // Zona de agarre de la rayita (arrastrable: cambia t.r, posición radial)
           html += `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="7" fill="transparent" class="tick-line-draggable no-export" data-axis="${axIdx}" data-tick="${tIdx}" style="cursor: move;" />`;
-          html += `<text x="${t.tx}" y="${t.ty}" text-anchor="${t.anchor || 'middle'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="8.5px" fill="${primaryColor}" paint-order="stroke fill" stroke="#ffffff" stroke-width="3.5px" stroke-linejoin="round" stroke-linecap="round" class="tick-label-draggable" data-axis="${axIdx}" data-tick="${tIdx}" style="cursor: move;">${escapeHtml(t.text)}</text>`;
+          html += `<text x="${t.tx}" y="${t.ty}" text-anchor="${t.anchor || 'middle'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="8.5px" fill="${colAx}" paint-order="stroke fill" stroke="#ffffff" stroke-width="3.5px" stroke-linejoin="round" stroke-linecap="round" class="tick-label-draggable" data-axis="${axIdx}" data-tick="${tIdx}" style="cursor: move;">${escapeHtml(t.text)}</text>`;
         });
       });
 
@@ -1608,6 +1747,208 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         showToast('Plantilla original restablecida');
       }
     });
+
+    // =========================================================================
+    // CREACIÓN RÁPIDA (JSON → dimensiones y niveles)
+    // =========================================================================
+    const QUICK_EXAMPLE = `{
+  "configuracion": {
+    "titulo": "ANÁLISIS CLIENTES 2026",
+    "color_ejes": "#000000",
+    "angulos": { "inicio": 98, "sentido": "horario" },
+    "marcas_por_defecto": {
+      "cantidad": 3,
+      "nombres": ["Nivel A", "Nivel B", "Nivel C"],
+      "radio_inicio": 60,
+      "paso_radio": 40
+    }
+  },
+  "dimensiones": {
+    "dimTiempo": {
+      "corte": ["Día", "Mes", "Trimestre"]
+    },
+    "dimProducto": {
+      "corte": ["Categoría", "Precio", "Stock"],
+      "estilo": { "color": "#0e7490" }
+    },
+    "dimCanal": {
+      "nombre": "DimCanal",
+      "corte": ["Web", "App", "Tienda"],
+      "angulo": 280
+    }
+  }
+}`;
+
+    function quickNum(v, def) {
+      const n = parseFloat(v);
+      const val = (typeof v === 'number') ? v : n;
+      return (typeof val === 'number' && isFinite(val)) ? val : def;
+    }
+
+    function parseQuickJSON(raw) {
+      const txt = (raw || '').trim();
+      if (!txt) throw 'El JSON está vacío: pega tu configuración en el recuadro.';
+      let data;
+      try {
+        data = JSON.parse(txt);
+      } catch (e) {
+        // Tolerante con claves sin comillas, comas finales y comillas simples
+        const fixed = txt
+          .replace(/([{,]\s*)([A-Za-z_áéíóúñÁÉÍÓÚÑ][\wáéíóúñÁÉÍÓÚÑ]*)\s*:/g, '$1"$2":')
+          .replace(/'([^']*)'/g, '"$1"')
+          .replace(/,(\s*[}\]])/g, '$1');
+        try {
+          data = JSON.parse(fixed);
+        } catch (e2) {
+          throw 'JSON inválido: ' + e.message;
+        }
+      }
+      if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+        throw 'El JSON debe ser un objeto con "dimensiones" o "dimensiones[]".';
+      }
+      return data;
+    }
+
+    // Acepta dimensiones como objeto {key: props} o como array [{nombre, corte}, ...]
+    // y picklevel arrays vía "corte" | niveles | marcas | campos | atributos.
+    function getQuickDimensions(data) {
+      let dims = data.dimensiones || data['dimensiones'] || {};
+      if (Array.isArray(dims)) {
+        return dims.map((d) => ({ key: (d && d.nombre) || 'Eje', props: d || {} }));
+      }
+      return Object.keys(dims).map((key) => ({ key, props: (typeof dims[key] === 'object' && dims[key] !== null) ? dims[key] : {} }));
+    }
+
+    function buildQuickAxes(data) {
+      const cfg = (typeof data.configuracion === 'object' && data.configuracion) || {};
+      const dims = getQuickDimensions(data);
+      if (!dims.length) throw 'Falta "dimensiones" con al menos una dimensión.';
+
+      // --- ángulos ---
+      const angCfg = cfg.angulos;
+      let startDeg = quickNum(angCfg && angCfg.inicio, 100) || 100;
+      let stepDeg = angCfg ? quickNum(angCfg.paso, null) : null;
+      let sentido = (angCfg && (angCfg.sentido === 'antihorario' || angCfg.sentido === 'anticlockwise')) ? -1 : 1;
+      const anglesArr = Array.isArray(angCfg) ? angCfg : null;
+
+      // --- marcas por defecto ---
+      const md = cfg.marcas_por_defecto || {};
+      const dCantidad = Math.max(1, Math.min(20, parseInt(md.cantidad, 10) || 4));
+      const dNombres = Array.isArray(md.nombres) ? md.nombres.map(String) : null;
+      const dRadio0 = quickNum(md.radio_inicio, 60) || 60;
+      const dPasoR = quickNum(md.paso_radio, 40) || 40;
+
+      const axes = [];
+      const stamp = Date.now().toString(36).slice(-4);
+      dims.forEach((entry, i) => {
+        const d = entry.props;
+        const axis = { id: 'dim_' + stamp + i + Math.random().toString(36).slice(2, 5) };
+
+        if (typeof d.nombre === 'string' && d.nombre.trim()) axis.name = d.nombre.trim();
+        else axis.name = entry.key; // fallback: la clave del JSON (p.ej. "dimTiempo")
+
+        // ángulo: explícito por eje > array global > inicio+paso*sentido
+        if (d.angulo !== undefined && isFinite(parseFloat(d.angulo))) {
+          axis.angle = parseFloat(d.angulo) % 360;
+        } else if (anglesArr) {
+          axis.angle = (parseFloat(anglesArr[i]) || (startDeg + i * (stepDeg != null ? stepDeg : (360 / dims.length)) * sentido)) % 360;
+        } else {
+          const st = (stepDeg != null) ? stepDeg : (360 / dims.length);
+          axis.angle = ((startDeg + st * i * sentido) % 360 + 360) % 360;
+        }
+        if (axis.angle < 0) axis.angle += 360;
+
+        // --- niveles: por eje (corte/niveles/marcas/campos/atributos) o defaults ---
+        let niveles = null;
+        for (const k of ['corte', 'niveles', 'marcas', 'campos', 'atributos']) {
+          if (Array.isArray(d[k]) && d[k].length) { niveles = d[k].map(String); break; }
+          if (typeof d[k] === 'string' && d[k].trim()) {
+            niveles = d[k].split(/[,;\n]/).map(s => s.trim()).filter(Boolean); break;
+          }
+        }
+        if (!niveles) {
+          if (dNombres) {
+            niveles = [];
+            for (let j = 0; j < dCantidad; j++) niveles.push(dNombres[j % dNombres.length]);
+          } else {
+            niveles = [];
+            for (let j = 0; j < dCantidad; j++) niveles.push('Nivel ' + (j + 1));
+          }
+        }
+
+        const r0 = (d.radio_inicio !== undefined && isFinite(parseFloat(d.radio_inicio))) ? parseFloat(d.radio_inicio) : dRadio0;
+        const rp = (d.paso_radio !== undefined && isFinite(parseFloat(d.paso_radio))) ? parseFloat(d.paso_radio) : dPasoR;
+        axis.ticks = niveles.map((txt, j) => ({
+          r: Math.round(r0 + rp * j),
+          text: txt,
+          tx: 0, ty: 0, anchor: 'middle'
+        }));
+
+        // estilo por eje
+        if (d.estilo && typeof d.estilo === 'object' && (d.estilo.color || typeof d.estilo.grosor === 'number')) {
+          axis.estilo = {};
+          if (d.estilo.color) axis.estilo.color = d.estilo.color;
+          if (typeof d.estilo.grosor === 'number') axis.estilo.grosor = d.estilo.grosor;
+        }
+
+        axes.push(axis);
+        // Auto-posicionar título y etiquetas de ESTE eje nuevo (sin tocar los
+        // ejes existentes, que ya pueden tuvo ajustes manuales del usuario)
+        updateAxisAutoPositions(axis);
+      });
+
+      return { axes, cfg };
+    }
+
+    function quickShowError(msg) {
+      const el = document.getElementById('quick-error');
+      el.style.display = 'block';
+      el.innerText = msg;
+    }
+
+    function quickHideError() {
+      document.getElementById('quick-error').style.display = 'none';
+    }
+
+    function aplicarCreacionRapida(mode) {
+      try {
+        const data = parseQuickJSON(document.getElementById('quick-json').value);
+        const { axes, cfg } = buildQuickAxes(data);
+        if (mode === 'reemplazar') {
+          state.axes = axes;
+        } else {
+          state.axes = state.axes.concat(axes);
+        }
+        // overrides de configuración global
+        if (typeof cfg.titulo === 'string' && cfg.titulo.trim()) state.title.text = cfg.titulo.trim();
+        if (cfg.color_ejes && /^#/.test(String(cfg.color_ejes))) state.canvas.primaryColor = cfg.color_ejes;
+        if (cfg.color_fondo && /^#/.test(String(cfg.color_fondo))) {
+          state.canvas.bgColor = cfg.color_fondo;
+          document.getElementById('stage').style.backgroundColor = cfg.color_fondo;
+        }
+        if (cfg.longitud_ejes !== undefined && isFinite(parseFloat(cfg.longitud_ejes))) {
+          state.canvas.axisLength = parseFloat(cfg.longitud_ejes);
+        }
+        syncInputs();
+        renderAxesForm();
+        renderMedidasForm();
+        renderSVG();
+        quickHideError();
+        showToast(mode === 'reemplazar'
+          ? `Diagrama generado: ${axes.length} ejes (reemplazados)`
+          : `${axes.length} ejes añadidos`);
+      } catch (err) {
+        quickShowError(typeof err === 'string' ? err : (err && err.message) || String(err));
+        showToast('JSON con errores — revisa el recuadro');
+      }
+    }
+
+    document.getElementById('btn-quick-generar').addEventListener('click', () => aplicarCreacionRapida('reemplazar'));
+    document.getElementById('btn-quick-anadir').addEventListener('click', () => aplicarCreacionRapida('anadir'));
+
+    // Precargar ejemplo en el textarea solo la primera vez
+    const quickTA = document.getElementById('quick-json');
+    if (!quickTA.value.trim()) quickTA.value = QUICK_EXAMPLE;
 
     // =========================================================================
     // DIAGRAMAS GUARDADOS (localStorage)
