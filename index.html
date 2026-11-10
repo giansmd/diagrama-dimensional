@@ -405,8 +405,9 @@
     }
 
     .modal-panel {
-      background: var(--bg-panel);
+      background: var(--bg-card);
       border: 1px solid var(--border);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
       border-radius: 10px;
       width: min(520px, calc(100vw - 40px));
       max-height: 80vh;
@@ -599,6 +600,16 @@
             <input type="color" id="medidas-bg" value="#fff9c4">
             <span id="medidas-bg-label" style="font-size: 12px; color: #94a3b8;">#fff9c4 (Amarillo Pastel)</span>
           </div>
+        </div>
+        <div class="form-group">
+          <label>Posición y Tamaño del Recuadro</label>
+          <div class="row" style="gap: 6px;">
+            <input type="number" id="medidas-x" value="649" title="X" placeholder="X" style="min-width: 0;">
+            <input type="number" id="medidas-y" value="138" title="Y" placeholder="Y" style="min-width: 0;">
+            <input type="number" id="medidas-ancho" value="290" title="Ancho" placeholder="Ancho" style="min-width: 0;">
+            <input type="number" id="medidas-alto" value="294" title="Alto" placeholder="Alto" style="min-width: 0;">
+          </div>
+          <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">También: arrastra el recuadro en el lienzo; la barra punteada inferior ajusta la altura.</div>
         </div>
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -927,6 +938,12 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
     let zoom = 1.0;
 
+    // Longitud efectiva por eje: si el usuario arrastró la punta de la flecha,
+    // ese eje tiene su propia len; si no, hereda la global axisLength.
+    function axisLenOf(axis) {
+      return (typeof axis.len === 'number') ? axis.len : state.canvas.axisLength;
+    }
+
     // =========================================================================
     // RENDERIZADO DEL SVG VECTORIAL
     // =========================================================================
@@ -980,11 +997,17 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         const px = -uy;
         const py = ux;
 
-        const tipX = cx + axisLength * ux;
-        const tipY = cy + axisLength * uy;
+        const lenAxis = axisLenOf(axis);
+        const tipX = cx + lenAxis * ux;
+        const tipY = cy + lenAxis * uy;
 
         // Línea de eje con flecha
         html += `<line x1="${cx}" y1="${cy}" x2="${tipX.toFixed(1)}" y2="${tipY.toFixed(1)}" stroke="${primaryColor}" stroke-width="${axisStroke}" stroke-linecap="round" marker-end="url(#arrow-marker)" />`;
+
+        // Manejador de la punta del eje (arrastrable: mover/estender la flecha).
+        // Clase no-export: se elimina al exportar PNG/SVG.
+        html += `<circle cx="${tipX.toFixed(1)}" cy="${tipY.toFixed(1)}" r="10" fill="transparent" class="axis-tip-draggable no-export" data-axis="${axIdx}" style="cursor: grab;" />`;
+        html += `<circle cx="${tipX.toFixed(1)}" cy="${tipY.toFixed(1)}" r="4.2" fill="${bgColor}" stroke="${primaryColor}" stroke-width="1.3" class="axis-tip-draggable no-export" data-axis="${axIdx}" style="cursor: grab;" />`;
 
         // Título de la dimensión (arrastrable)
         html += `<text x="${axis.titleX}" y="${axis.titleY}" text-anchor="${axis.titleAnchor}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="10.5px" font-weight="bold" fill="${primaryColor}" class="axis-title-draggable" data-axis="${axIdx}" style="cursor: move;">${escapeHtml(axis.name)}</text>`;
@@ -1000,6 +1023,8 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
           const y2 = ty - tickHalf * py;
 
           html += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${primaryColor}" stroke-width="${axisStroke}" />`;
+          // Zona de agarre de la rayita (arrastrable: cambia t.r, posición radial)
+          html += `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="7" fill="transparent" class="tick-line-draggable no-export" data-axis="${axIdx}" data-tick="${tIdx}" style="cursor: move;" />`;
           html += `<text x="${t.tx}" y="${t.ty}" text-anchor="${t.anchor || 'middle'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="8.5px" fill="${primaryColor}" paint-order="stroke fill" stroke="#ffffff" stroke-width="3.5px" stroke-linejoin="round" stroke-linecap="round" class="tick-label-draggable" data-axis="${axIdx}" data-tick="${tIdx}" style="cursor: move;">${escapeHtml(t.text)}</text>`;
         });
       });
@@ -1025,6 +1050,14 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         });
         currY += 8;
       });
+
+      // Zona de arrastre del recuadro de Medidas (mover libremente; se dibuja
+      // encima de los textos para capturar el drag en todo el recuadro)
+      html += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="transparent" class="medidas-move-draggable no-export" style="cursor: move;" />`;
+
+      // Asa de redimensionar la altura: barra visible en el borde inferior
+      html += `<rect x="${bx}" y="${by + bh - 5}" width="${bw}" height="10" fill="transparent" class="medidas-resize-draggable no-export" style="cursor: ns-resize;" />`;
+      html += `<line x1="${bx + 10}" y1="${by + bh}" x2="${bx + bw - 10}" y2="${by + bh}" stroke="${primaryColor}" stroke-width="1.6" stroke-dasharray="4 3" opacity="0.55" class="medidas-resize-handle no-export" />`;
 
       svgElem.innerHTML = html;
     }
@@ -1166,7 +1199,8 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
     }
 
     function updateAxisAutoPositions(axis) {
-      const { cx, cy, axisLength } = state.canvas;
+      const { cx, cy } = state.canvas;
+      const axisLength = axisLenOf(axis);
       const rad = (axis.angle * Math.PI) / 180;
       const ux = Math.cos(rad);
       const uy = -Math.sin(rad);
@@ -1313,9 +1347,17 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
     // =========================================================================
     // EXPORTACIÓN A PNG Y COPIAR AL PORTAPAPELES
     // =========================================================================
+    // Clona el SVG y elimina los manejadores de arrastre (clase no-export)
+    // para que no aparezcan en la imagen exportada.
+    function exportSvgString() {
+      const clone = svgElem.cloneNode(true);
+      clone.querySelectorAll('.no-export').forEach(el => el.remove());
+      return new XMLSerializer().serializeToString(clone);
+    }
+
     function getCanvasBlob(scale = 2) {
       return new Promise((resolve) => {
-        const svgString = new XMLSerializer().serializeToString(svgElem);
+        const svgString = exportSvgString();
         const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
         const URL = window.URL || window.webkitURL || window;
         const blobURL = URL.createObjectURL(svgBlob);
@@ -1368,7 +1410,7 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
     // Descargar SVG
     document.getElementById('btn-export-svg').addEventListener('click', () => {
-      const svgString = new XMLSerializer().serializeToString(svgElem);
+      const svgString = exportSvgString();
       const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1433,6 +1475,26 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
       state.medidas.bg = e.target.value;
       document.getElementById('medidas-bg-label').innerText = e.target.value;
       renderSVG();
+    });
+
+    document.getElementById('medidas-x').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val)) { state.medidas.x = Math.round(Math.max(0, Math.min(state.canvas.width - state.medidas.width, val))); renderSVG(); }
+    });
+
+    document.getElementById('medidas-y').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val)) { state.medidas.y = Math.round(Math.max(0, Math.min(state.canvas.height - 40, val))); renderSVG(); }
+    });
+
+    document.getElementById('medidas-ancho').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val)) { state.medidas.width = Math.round(Math.max(80, Math.min(state.canvas.width - state.medidas.x, val))); renderSVG(); }
+    });
+
+    document.getElementById('medidas-alto').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val)) { state.medidas.height = Math.round(Math.max(60, Math.min(state.canvas.height - state.medidas.y, val))); renderSVG(); }
     });
 
     document.getElementById('btn-add-medida-group').addEventListener('click', () => {
@@ -1681,7 +1743,7 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
       updateZoom(Math.min(scaleX, scaleY));
     });
 
-    // Arrastre interactivo de textos directamente en el SVG
+    // Arrastre interactivo de textos y manejadores directamente en el SVG
     let draggingItem = null;
     let dragStartMouse = { x: 0, y: 0 };
     let dragStartPos = { x: 0, y: 0 };
@@ -1696,12 +1758,49 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         dragStartMouse = { x: e.clientX, y: e.clientY };
         dragStartPos = { x: tick.tx, y: tick.ty };
         e.preventDefault();
+      } else if (target.classList.contains('tick-line-draggable')) {
+        const axIdx = parseInt(target.getAttribute('data-axis'), 10);
+        const tIdx = parseInt(target.getAttribute('data-tick'), 10);
+        const tick = state.axes[axIdx].ticks[tIdx];
+        const { cx, cy } = state.canvas;
+        const axis = state.axes[axIdx];
+        const rad = (axis.angle * Math.PI) / 180;
+        // Arrastrar la rayita mueve su posición radial (t.r). La etiqueta
+        // mantiene su posición propia; si quieres que la siga, se suelta después.
+        const txr = cx + tick.r * Math.cos(rad);
+        const tyr = cy + tick.r * (-Math.sin(rad));
+        draggingItem = { type: 'tickLine', obj: tick, cx, cy, ux: Math.cos(rad), uy: -Math.sin(rad), r0: tick.r };
+        dragStartMouse = { x: e.clientX, y: e.clientY };
+        dragStartPos = { x: txr, y: tyr };
+        e.preventDefault();
+      } else if (target.classList.contains('axis-tip-draggable')) {
+        const axIdx = parseInt(target.getAttribute('data-axis'), 10);
+        const axis = state.axes[axIdx];
+        const { cx, cy } = state.canvas;
+        const rad = (axis.angle * Math.PI) / 180;
+        const ux = Math.cos(rad);
+        const uy = -Math.sin(rad);
+        const len0 = axisLenOf(axis);
+        draggingItem = { type: 'tip', obj: axis, cx, cy, ux, uy, len0 };
+        dragStartMouse = { x: e.clientX, y: e.clientY };
+        dragStartPos = { x: cx + len0 * ux, y: cy + len0 * uy };
+        e.preventDefault();
       } else if (target.classList.contains('axis-title-draggable')) {
         const axIdx = parseInt(target.getAttribute('data-axis'), 10);
         const axis = state.axes[axIdx];
         draggingItem = { type: 'title', obj: axis };
         dragStartMouse = { x: e.clientX, y: e.clientY };
         dragStartPos = { x: axis.titleX, y: axis.titleY };
+        e.preventDefault();
+      } else if (target.classList.contains('medidas-resize-draggable')) {
+        draggingItem = { type: 'medidasResize', obj: state.medidas, h0: state.medidas.height, y0: state.medidas.y };
+        dragStartMouse = { x: e.clientX, y: e.clientY };
+        dragStartPos = { x: state.medidas.x, y: state.medidas.y };
+        e.preventDefault();
+      } else if (target.classList.contains('medidas-move-draggable')) {
+        draggingItem = { type: 'medidasMove', obj: state.medidas, x0: state.medidas.x, y0: state.medidas.y };
+        dragStartMouse = { x: e.clientX, y: e.clientY };
+        dragStartPos = { x: state.medidas.x, y: state.medidas.y };
         e.preventDefault();
       }
     });
@@ -1710,12 +1809,30 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
       if (!draggingItem) return;
       const dx = (e.clientX - dragStartMouse.x) / zoom;
       const dy = (e.clientY - dragStartMouse.y) / zoom;
-      if (draggingItem.type === 'tick') {
+      const d = draggingItem || {};
+      if (d.type === 'tick') {
         draggingItem.obj.tx = Math.round(dragStartPos.x + dx);
         draggingItem.obj.ty = Math.round(dragStartPos.y + dy);
-      } else if (draggingItem.type === 'title') {
+      } else if (d.type === 'title') {
         draggingItem.obj.titleX = Math.round(dragStartPos.x + dx);
         draggingItem.obj.titleY = Math.round(dragStartPos.y + dy);
+      } else if (d.type === 'tip') {
+        // Proyección del mouse sobre la dirección del eje → longitud del eje
+        const len = Math.round((dragStartPos.x + dx - d.cx) * d.ux + (dragStartPos.y + dy - d.cy) * d.uy);
+        const maxLen = Math.hypot(state.canvas.width, state.canvas.height);
+        draggingItem.obj.len = Math.max(30, Math.min(maxLen, len));
+      } else if (d.type === 'tickLine') {
+        const r = Math.round((dragStartPos.x + dx - d.cx) * d.ux + (dragStartPos.y + dy - d.cy) * d.uy);
+        draggingItem.obj.r = Math.max(5, Math.min(999, r));
+      } else if (d.type === 'medidasMove') {
+        const m = draggingItem.obj;
+        const { width, height } = state.canvas;
+        m.x = Math.round(Math.max(0, Math.min(width - m.width, d.x0 + dx)));
+        m.y = Math.round(Math.max(0, Math.min(height - 40, d.y0 + dy)));
+      } else if (d.type === 'medidasResize') {
+        const m = draggingItem.obj;
+        const { height } = state.canvas;
+        m.height = Math.round(Math.max(60, Math.min(height - d.y0, d.h0 + dy)));
       }
       renderSVG();
     });
@@ -1734,6 +1851,10 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
       document.getElementById('role-y').value = state.note.y;
       document.getElementById('medidas-title').value = state.medidas.title;
       document.getElementById('medidas-bg').value = state.medidas.bg;
+      document.getElementById('medidas-x').value = state.medidas.x;
+      document.getElementById('medidas-y').value = state.medidas.y;
+      document.getElementById('medidas-ancho').value = state.medidas.width;
+      document.getElementById('medidas-alto').value = state.medidas.height;
       document.getElementById('axis-stroke').value = state.canvas.axisStroke;
       document.getElementById('axis-length').value = state.canvas.axisLength;
       document.getElementById('primary-color').value = state.canvas.primaryColor;
