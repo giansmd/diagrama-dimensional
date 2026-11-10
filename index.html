@@ -800,6 +800,7 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
           <button id="btn-quick-generar" class="btn-primary" style="flex: 1;" title="Genera las dimensiones/niveles desde el JSON y REEMPLAZA los ejes actuales">⚡ Generar diagrama (reemplaza ejes)</button>
           <button id="btn-quick-anadir" style="flex: 1;" title="Añade las dimensiones del JSON a las existentes">+ Añadir ejes</button>
         </div>
+        <button id="btn-quick-copiar" style="width: 100%; margin-bottom: 8px;" title="Exporta el diagrama ACTUAL (ángulos reales y radios exactos) a JSON, en el recuadro y al portapapeles">📋 Copiar JSON del diagrama actual</button>
         <details class="quick-help">
           <summary>¿Cómo se usa? (formato y ejemplo)</summary>
           <div class="quick-help-body">
@@ -815,7 +816,10 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
               • <code>corte</code> — array de niveles (también acepta <code>niveles</code>/<code>marcas</code> o texto "a, b, c")<br>
               • <code>angulo</code> — ángulo explícito de este eje<br>
               • <code>estilo</code> — <code>{ "color": "#hex", "grosor": 1.4 }</code><br>
-              • <code>radio_inicio</code> / <code>paso_radio</code> — opcional por eje
+              • <code>radio_inicio</code> / <code>paso_radio</code> — opcional por eje<br><br>
+              <b>JSON detallado</b> (útil tras ajustar a mano): cada nivel puede llevar su radio exacto —
+              <code>"corte": [{ "texto": "Año", "radio": 182 }, ...]</code> o <code>"radios": [60, 100]</code>.
+              <b>📋 Copiar JSON del diagrama actual</b> genera exactamente eso: ángulos reales (flechas movidas) y radios de las marcas, listo para editar y regenerar.
             </div>
 <pre class="quick-example">{
   "configuracion": {
@@ -1861,7 +1865,7 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         // --- niveles: por eje (corte/niveles/marcas/campos/atributos) o defaults ---
         let niveles = null;
         for (const k of ['corte', 'niveles', 'marcas', 'campos', 'atributos']) {
-          if (Array.isArray(d[k]) && d[k].length) { niveles = d[k].map(String); break; }
+          if (Array.isArray(d[k]) && d[k].length) { niveles = d[k]; break; } // items: string u objeto {texto, radio}
           if (typeof d[k] === 'string' && d[k].trim()) {
             niveles = d[k].split(/[,;\n]/).map(s => s.trim()).filter(Boolean); break;
           }
@@ -1878,11 +1882,24 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
         const r0 = (d.radio_inicio !== undefined && isFinite(parseFloat(d.radio_inicio))) ? parseFloat(d.radio_inicio) : dRadio0;
         const rp = (d.paso_radio !== undefined && isFinite(parseFloat(d.paso_radio))) ? parseFloat(d.paso_radio) : dPasoR;
-        axis.ticks = niveles.map((txt, j) => ({
-          r: Math.round(r0 + rp * j),
-          text: txt,
-          tx: 0, ty: 0, anchor: 'middle'
-        }));
+
+        // Radios explícitos por nivel: "radios": [60, 100, ...] o el corte
+        // como objetos { "texto": "Día", "radio": 62 } (respuesta del
+        // "Copiar JSON actual", round-trip completo).
+        const radiosExplicit = Array.isArray(d.radios) ? d.radios : null;
+        axis.ticks = niveles.map((item, j) => {
+          let texto2 = item, radio2 = null;
+          if (typeof item === 'object' && item !== null) {
+            texto2 = String(item.texto !== undefined ? item.texto : (item.nivel !== undefined ? item.nivel : (item.nombre !== undefined ? item.nombre : (item.etiqueta !== undefined ? item.etiqueta : 'Nivel ' + (j + 1)))));
+            radio2 = quickNum(item.radio !== undefined ? item.radio : (item.r !== undefined ? item.r : item.posicion), null);
+          }
+          let rr = radio2;
+          if (rr === null && radiosExplicit && radiosExplicit[j] !== undefined && isFinite(parseFloat(radiosExplicit[j]))) {
+            rr = parseFloat(radiosExplicit[j]);
+          }
+          if (rr === null) rr = Math.round(r0 + rp * j);
+          return { r: Math.round(rr), text: String(texto2), tx: 0, ty: 0, anchor: 'middle' };
+        });
 
         // estilo por eje
         if (d.estilo && typeof d.estilo === 'object' && (d.estilo.color || typeof d.estilo.grosor === 'number')) {
@@ -1945,6 +1962,50 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
     document.getElementById('btn-quick-generar').addEventListener('click', () => aplicarCreacionRapida('reemplazar'));
     document.getElementById('btn-quick-anadir').addEventListener('click', () => aplicarCreacionRapida('anadir'));
+
+    // Exporta el estado ACTUAL en formato detallado (round-trip con el parser):
+    // ángulos reales (incluida la flecha arrastrada), radios exactos por nivel.
+    function buildJSONDesdeEstado() {
+      const dimensiones = {};
+      state.axes.forEach((a, i) => {
+        let key = String(a.name || ('Eje' + (i + 1))).replace(/[^\wáéíóúñÁÉÍÓÚÑ]/gi, '_');
+        let k2 = key, n = 2;
+        while (dimensiones[k2]) { k2 = key + '_' + n; n++; }
+        const out = {
+          nombre: a.name,
+          angulo: Math.round(Math.atan2(-(axisTipOf(a).y - state.canvas.cy), axisTipOf(a).x - state.canvas.cx) * 180 / Math.PI * 10) / 10,
+          corte: (a.ticks || []).map(t => ({ texto: t.text, radio: t.r }))
+        };
+        if (a.estilo && a.estilo.color) {
+          out.estilo = { color: a.estilo.color };
+          if (typeof a.estilo.grosor === 'number') out.estilo.grosor = a.estilo.grosor;
+        }
+        dimensiones[k2] = out;
+      });
+      return JSON.stringify({
+        configuracion: {
+          titulo: state.title.text,
+          color_ejes: state.canvas.primaryColor,
+          color_fondo: state.canvas.bgColor,
+          longitud_ejes: state.canvas.axisLength
+        },
+        dimensiones
+      }, null, 2);
+    }
+
+    document.getElementById('btn-quick-copiar').addEventListener('click', async () => {
+      const jsonOut = buildJSONDesdeEstado();
+      document.getElementById('quick-json').value = jsonOut;
+      try {
+        await navigator.clipboard.writeText(jsonOut);
+        showToast('JSON del diagrama actual copiado (y en el recuadro)');
+      } catch (e) {
+        showToast('JSON del estado actual en el recuadro');
+      }
+      // desplazar a la sección de creación rápida para verlo
+      const q = document.getElementById('tab-quick');
+      if (q && asideEl) asideEl.scrollTo({ top: q.offsetTop - asideEl.offsetTop, behavior: 'smooth' });
+    });
 
     // Precargar ejemplo en el textarea solo la primera vez
     const quickTA = document.getElementById('quick-json');
@@ -2177,7 +2238,11 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         const tuy = (tdir.y - cy) / thyp;
         const txr = cx + tick.r * tux;
         const tyr = cy + tick.r * tuy;
-        draggingItem = { type: 'tickLine', obj: tick, axisRef: axis, cx, cy, r0: tick.r };
+        draggingItem = {
+          type: 'tickLine', obj: tick, axisRef: axis, cx, cy, r0: tick.r,
+          axIdx: parseInt(target.getAttribute('data-axis'), 10),
+          tIdx: parseInt(target.getAttribute('data-tick'), 10)
+        };
         dragStartMouse = { x: e.clientX, y: e.clientY };
         dragStartPos = { x: txr, y: tyr };
         e.preventDefault();
@@ -2187,7 +2252,7 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         const tp = axisTipOf(axis);
         // Arrastre libre 2D: la punta sigue al mouse, la flecha apunta adonde
         // se deje (ángulo y longitud se derivan de la posición).
-        draggingItem = { type: 'tip', obj: axis };
+        draggingItem = { type: 'tip', obj: axis, axIdx: parseInt(target.getAttribute('data-axis'), 10) };
         dragStartMouse = { x: e.clientX, y: e.clientY };
         dragStartPos = { x: tp.x, y: tp.y };
         e.preventDefault();
@@ -2229,6 +2294,15 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         const ny = Math.round(Math.max(10, Math.min(height - 10, dragStartPos.y + dy)));
         draggingItem.obj.tip = { x: nx, y: ny };
         delete draggingItem.obj.len;
+        // Espejo en el panel: ángulo derivado en el input y el badge de la ficha
+        const angLive = Math.round(((Math.atan2(-(ny - state.canvas.cy), nx - state.canvas.cx) * 180 / Math.PI) % 360 + 360) % 360);
+        const cardT = document.querySelectorAll('#axes-container .dim-card')[d.axIdx];
+        if (cardT) {
+          const aInp = cardT.querySelector('.input-axis-angle');
+          if (aInp) aInp.value = angLive;
+          const badgeT = cardT.querySelector('.dim-badge');
+          if (badgeT) badgeT.innerText = angLive + '°';
+        }
       } else if (d.type === 'tickLine') {
         // Dirección real de la flecha de este eje (por si la giraron)
         const ax2 = d.axisRef;
@@ -2238,6 +2312,9 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
         const uy2 = (tipAx.y - d.cy) / hyp2;
         const rr = Math.round((dragStartPos.x + dx - d.cx) * ux2 + (dragStartPos.y + dy - d.cy) * uy2);
         draggingItem.obj.r = Math.max(5, Math.min(999, rr));
+        // Espejo en el panel: el NÚMERO de la marca se actualiza al arrastrar
+        const rinp = tickRInputEl(d.axIdx, d.tIdx);
+        if (rinp) rinp.value = draggingItem.obj.r;
       } else if (d.type === 'medidasMove') {
         const m = draggingItem.obj;
         const { width, height } = state.canvas;
@@ -2253,9 +2330,31 @@ Sesión de Chat, Captación / Conversión en Buyer)</textarea>
 
     window.addEventListener('mouseup', () => {
       if (draggingItem) {
+        // Al soltar: espejo definitivo en el panel izquierdo
+        if (draggingItem.type === 'medidasMove' || draggingItem.type === 'medidasResize') {
+          syncMedidasInputs();
+        }
         draggingItem = null;
+        guardarEstado();
       }
     });
+
+    // --- espejo panel ↔ lienzo ---
+    // Devuelve el input del radio (r) de la marca tIdx del eje axIdx
+    function tickRInputEl(axIdx, tIdx) {
+      const card = document.querySelectorAll('#axes-container .dim-card')[axIdx];
+      if (!card) return null;
+      return card.querySelectorAll('.tick-r')[tIdx] || null;
+    }
+
+    function syncMedidasInputs() {
+      const m = state.medidas;
+      const vals = { 'medidas-x': m.x, 'medidas-y': m.y, 'medidas-ancho': m.width, 'medidas-alto': m.height };
+      Object.keys(vals).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = vals[id];
+      });
+    }
 
     // Sincronizar inputs iniciales
     function syncInputs() {
